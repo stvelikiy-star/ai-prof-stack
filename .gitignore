@@ -1,0 +1,35 @@
+# Secrets and environment files
+secrets/
+.env
+.env.*
+!.env.example
+
+# Runtime state, locks, and temporary state
+runtime/
+*.pid
+*.lock
+
+# Backups and logs
+backups/
+ai-prof-backups/
+*.log
+
+# Temporary and editor files
+*.tmp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Dependencies and generated output
+node_modules/
+dist/
+build/
+coverage/
+__pycache__/
+*.py[cod]
+
+# Local AI tool state
+.claude/
+.codex/

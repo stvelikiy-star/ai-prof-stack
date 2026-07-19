@@ -1,0 +1,11 @@
+[Unit]
+Description=Run AI PROF Backup Daily
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 Asia/Bishkek
+Persistent=true
+AccuracySec=1min
+Unit=ai-prof-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,24 @@
+[Unit]
+Description=AI PROF PostgreSQL and n8n Backup
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=agent
+Group=agent
+SupplementaryGroups=docker
+WorkingDirectory=/home/agent/ai-prof-stack
+Environment=HOME=/home/agent
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ExecStart=/home/agent/ai-prof-stack/scripts/backup-ai-prof.sh
+
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=30min
+TimeoutStopSec=5min
+NoNewPrivileges=true
+PrivateTmp=true

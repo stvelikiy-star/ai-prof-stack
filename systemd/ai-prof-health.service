@@ -1,0 +1,26 @@
+[Unit]
+Description=AI PROF Server Health Check
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=agent
+Group=agent
+SupplementaryGroups=docker
+WorkingDirectory=/home/agent/ai-prof-stack
+
+Environment=HOME=/home/agent
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ExecStart=/home/agent/ai-prof-stack/scripts/check-ai-prof-health.sh
+
+SuccessExitStatus=1
+TimeoutStartSec=5min
+
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+NoNewPrivileges=true
+PrivateTmp=true

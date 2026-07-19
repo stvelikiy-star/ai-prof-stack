@@ -1,0 +1,11 @@
+[Unit]
+Description=Run AI PROF Server Health Check Hourly
+
+[Timer]
+OnCalendar=*-*-* *:15:00
+Persistent=true
+AccuracySec=1min
+Unit=ai-prof-health.service
+
+[Install]
+WantedBy=timers.target
