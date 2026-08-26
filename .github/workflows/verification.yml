@@ -1,0 +1,66 @@
+name: AI PROF Stack Verification
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, 'ci/**', 'fix/**', 'feature/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-prof-stack-verification-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify required stack files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s compose.yaml
+          test -s postgres/init/01-create-n8n.sh
+          test -s n8n/secret-entrypoint.sh
+          test -d scripts
+          test -d systemd
+
+      - name: Validate shell syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            bash -n "$file"
+          done < <(find scripts postgres n8n -type f -name '*.sh' -print0)
+
+      - name: Validate Docker Compose model
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f compose.yaml config --quiet
+
+      - name: Verify security-critical Compose boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          rendered="$(docker compose -f compose.yaml config)"
+          grep -q '127.0.0.1:5678' <<<"$rendered"
+          grep -q 'internal: true' <<<"$rendered"
+          grep -q 'postgres_admin_password' <<<"$rendered"
+          grep -q 'postgres_n8n_password' <<<"$rendered"
+          grep -q 'n8n_encryption_key' <<<"$rendered"
+
+      - name: Verify no tracked secret directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -E '(^|/)secrets/'; then
+            echo 'ERROR: tracked secrets path detected' >&2
+            exit 1
+          fi
