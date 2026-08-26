@@ -25,11 +25,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s compose.yaml
-          test -s postgres/init/01-create-n8n.sh
-          test -s n8n/secret-entrypoint.sh
-          test -d scripts
-          test -d systemd
+          required=(
+            compose.yaml
+            postgres/init/01-create-n8n.sh
+            n8n/secret-entrypoint.sh
+            scripts/backup-ai-prof.sh
+            scripts/check-ai-prof-health.sh
+            scripts/test-restore-ai-prof.sh
+            systemd/ai-prof-backup.service
+            systemd/ai-prof-backup.timer
+            systemd/ai-prof-health.service
+            systemd/ai-prof-health.timer
+          )
+          for path in "${required[@]}"; do
+            test -s "$path" || { echo "ERROR: missing or empty required file: $path" >&2; exit 1; }
+          done
 
       - name: Validate shell syntax
         shell: bash
@@ -38,6 +48,23 @@ jobs:
           while IFS= read -r -d '' file; do
             bash -n "$file"
           done < <(find scripts postgres n8n -type f -name '*.sh' -print0)
+
+      - name: Validate systemd unit syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo install -d -m 0755 /home/agent
+          if [ -e /home/agent/ai-prof-stack ] || [ -L /home/agent/ai-prof-stack ]; then
+            echo 'ERROR: unexpected pre-existing /home/agent/ai-prof-stack on CI runner' >&2
+            exit 1
+          fi
+          sudo ln -s "$GITHUB_WORKSPACE" /home/agent/ai-prof-stack
+          trap 'sudo rm -f /home/agent/ai-prof-stack' EXIT
+          systemd-analyze verify \
+            systemd/ai-prof-backup.service \
+            systemd/ai-prof-backup.timer \
+            systemd/ai-prof-health.service \
+            systemd/ai-prof-health.timer
 
       - name: Validate Docker Compose model
         shell: bash
