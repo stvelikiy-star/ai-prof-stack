@@ -1,0 +1,77 @@
+name: AI PROF Stack Verification
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required stack files
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            compose.yaml
+            n8n/secret-entrypoint.sh
+            postgres/init/01-create-n8n.sh
+            scripts/backup-ai-prof.sh
+            scripts/check-ai-prof-health.sh
+            scripts/test-restore-ai-prof.sh
+            systemd/ai-prof-backup.service
+            systemd/ai-prof-backup.timer
+            systemd/ai-prof-health.service
+            systemd/ai-prof-health.timer
+          )
+          for path in "${required[@]}"; do
+            test -f "$path" || { echo "Missing required file: $path" >&2; exit 1; }
+          done
+
+      - name: Verify shell syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n n8n/secret-entrypoint.sh
+          bash -n postgres/init/01-create-n8n.sh
+          for script in scripts/*.sh; do
+            bash -n "$script"
+          done
+
+      - name: Verify Docker Compose contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p secrets
+          trap 'rm -rf secrets' EXIT
+          printf '%s\n' 'ci-placeholder-admin' > secrets/postgres_admin_password
+          printf '%s\n' 'ci-placeholder-n8n' > secrets/postgres_n8n_password
+          printf '%s\n' 'ci-placeholder-encryption-key-32bytes' > secrets/n8n_encryption_key
+          chmod 600 secrets/*
+          docker compose -f compose.yaml config --quiet
+          mapfile -t services < <(docker compose -f compose.yaml config --services | sort)
+          expected=(n8n postgres)
+          if [[ "${services[*]}" != "${expected[*]}" ]]; then
+            printf 'Unexpected services: %s\n' "${services[*]}" >&2
+            exit 1
+          fi
+
+      - name: Verify systemd unit syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          systemd-analyze verify \
+            systemd/ai-prof-backup.service \
+            systemd/ai-prof-backup.timer \
+            systemd/ai-prof-health.service \
+            systemd/ai-prof-health.timer
