@@ -53,6 +53,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sudo install -d -m 0755 /home/agent
+          if [ -e /home/agent/ai-prof-stack ] || [ -L /home/agent/ai-prof-stack ]; then
+            echo 'ERROR: unexpected pre-existing /home/agent/ai-prof-stack on CI runner' >&2
+            exit 1
+          fi
+          sudo ln -s "$GITHUB_WORKSPACE" /home/agent/ai-prof-stack
+          trap 'sudo rm -f /home/agent/ai-prof-stack' EXIT
           systemd-analyze verify \
             systemd/ai-prof-backup.service \
             systemd/ai-prof-backup.timer \
