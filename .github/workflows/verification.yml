@@ -71,6 +71,12 @@ jobs:
         run: |
           set -euo pipefail
           docker compose -f compose.yaml config --quiet
+          mapfile -t services < <(docker compose -f compose.yaml config --services | LC_ALL=C sort)
+          expected=(n8n postgres)
+          if [[ "${services[*]}" != "${expected[*]}" ]]; then
+            printf 'ERROR: Unexpected stack services: %s\n' "${services[*]}" >&2
+            exit 1
+          fi
 
       - name: Verify security-critical Compose boundaries
         shell: bash
